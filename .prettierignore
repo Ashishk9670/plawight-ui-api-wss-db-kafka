@@ -1,0 +1,12 @@
+node_modules
+playwright-report
+test-results
+allure-results
+allure-report
+.auth
+logs
+schemas/*.generated.ts
+**/__snapshots__
+package-lock.json
+aut/package-lock.json
+aut/node_modules

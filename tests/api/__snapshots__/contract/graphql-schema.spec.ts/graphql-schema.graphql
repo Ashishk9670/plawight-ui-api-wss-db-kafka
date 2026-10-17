@@ -1,0 +1,41 @@
+type Product {
+  id: Int!
+  name: String!
+  description: String!
+  category: String!
+  price: Float!
+  stock: Int!
+}
+
+type OrderItem {
+  productId: Int!
+  name: String!
+  quantity: Int!
+  unitPrice: Float!
+}
+
+type Order {
+  id: Int!
+  userId: Int!
+  status: String!
+  total: Float!
+  createdAt: String!
+  items: [OrderItem!]!
+}
+
+input OrderItemInput {
+  productId: Int!
+  quantity: Int!
+}
+
+type Query {
+  products(search: String, category: String): [Product!]!
+  product(id: Int!): Product
+  orders: [Order!]!
+  order(id: Int!): Order
+}
+
+type Mutation {
+  createOrder(items: [OrderItemInput!]!): Order!
+  updateOrderStatus(id: Int!, status: String!): Order!
+}

@@ -4,7 +4,11 @@ import { expect, test } from '@fixtures/base.fixture';
 import { validate } from '@utils/schema-validator';
 
 test.describe('WebSocket order status pushes', () => {
-  test('creating an order pushes CREATED to its owner @smoke @ws', async ({ userSocket, userServices, makeProduct }) => {
+  test('creating an order pushes CREATED to its owner @smoke @ws', async ({
+    userSocket,
+    userServices,
+    makeProduct,
+  }) => {
     const product = await makeProduct();
     const order = await userServices.orders.create([{ productId: product.id, quantity: 1 }]);
 
@@ -25,7 +29,12 @@ test.describe('WebSocket order status pushes', () => {
     expect(statuses).toEqual(['CREATED', 'PAID', 'SHIPPED', 'DELIVERED']);
   });
 
-  test('another user does not receive the owner\'s order events', async ({ userSocket, adminSocket, userServices, makeProduct }) => {
+  test("another user does not receive the owner's order events", async ({
+    userSocket,
+    adminSocket,
+    userServices,
+    makeProduct,
+  }) => {
     const product = await makeProduct();
     const order = await userServices.orders.create([{ productId: product.id, quantity: 1 }]);
 

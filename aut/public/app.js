@@ -34,7 +34,13 @@ async function loadProducts() {
   for (const p of state.products) {
     const li = document.createElement('li');
     li.dataset.testid = `product-${p.id}`;
-    li.innerHTML = `<span data-testid="product-name">${p.name}</span><span data-testid="product-price">${p.price.toFixed(2)}</span>`;
+    const nameEl = document.createElement('span');
+    nameEl.dataset.testid = 'product-name';
+    nameEl.textContent = p.name;
+    const priceEl = document.createElement('span');
+    priceEl.dataset.testid = 'product-price';
+    priceEl.textContent = p.price.toFixed(2);
+    li.append(nameEl, priceEl);
     const btn = document.createElement('button');
     btn.textContent = 'Add';
     btn.dataset.testid = `add-to-cart-${p.id}`;

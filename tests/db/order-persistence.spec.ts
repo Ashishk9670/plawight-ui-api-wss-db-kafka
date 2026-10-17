@@ -1,21 +1,36 @@
 import { expect, test } from '@fixtures/base.fixture';
 
-interface OrderRow { id: number; user_id: number; status: string; total: string }
-interface ItemRow { product_id: number; quantity: number; unit_price: string }
+interface OrderRow {
+  id: number;
+  user_id: number;
+  status: string;
+  total: string;
+}
+interface ItemRow {
+  product_id: number;
+  quantity: number;
+  unit_price: string;
+}
 
 test.describe('Database validation', () => {
   test('seed data is present @smoke @db', async ({ db }) => {
-    const [{ count }] = await db.query<{ count: string }>('SELECT count(*) FROM products WHERE category <> $1', ['test']);
+    const [{ count }] = await db.query<{ count: string }>('SELECT count(*) FROM products WHERE category <> $1', [
+      'test',
+    ]);
     expect(Number(count)).toBeGreaterThanOrEqual(6);
     const users = await db.query<{ email: string; role: string }>('SELECT email, role FROM users ORDER BY id');
-    expect(users).toEqual(expect.arrayContaining([
-      { email: 'user@shop.test', role: 'user' },
-      { email: 'admin@shop.test', role: 'admin' },
-    ]));
+    expect(users).toEqual(
+      expect.arrayContaining([
+        { email: 'user@shop.test', role: 'user' },
+        { email: 'admin@shop.test', role: 'admin' },
+      ]),
+    );
   });
 
   test('passwords are not stored in clear text', async ({ db }) => {
-    const user = await db.queryOne<{ password_hash: string }>('SELECT password_hash FROM users WHERE email = $1', ['user@shop.test']);
+    const user = await db.queryOne<{ password_hash: string }>('SELECT password_hash FROM users WHERE email = $1', [
+      'user@shop.test',
+    ]);
     expect(user!.password_hash).not.toContain('Password123!');
     expect(user!.password_hash).toMatch(/^[0-9a-f]{64}$/);
   });
@@ -50,24 +65,43 @@ test.describe('Database validation', () => {
     });
     expect(res.status()).toBe(409);
 
-    const [{ count }] = await db.query<{ count: string }>('SELECT count(*) FROM order_items WHERE product_id = $1', [product.id]);
+    const [{ count }] = await db.query<{ count: string }>('SELECT count(*) FROM order_items WHERE product_id = $1', [
+      product.id,
+    ]);
     expect(Number(count)).toBe(0);
-    expect((await db.queryOne<{ stock: number }>('SELECT stock FROM products WHERE id = $1', [product.id]))!.stock).toBe(2);
+    expect(
+      (await db.queryOne<{ stock: number }>('SELECT stock FROM products WHERE id = $1', [product.id]))!.stock,
+    ).toBe(2);
   });
 
-  test('a multi-item order that fails midway leaves no partial data', async ({ db, rest, userServices, makeProduct }) => {
+  test('a multi-item order that fails midway leaves no partial data', async ({
+    db,
+    rest,
+    userServices,
+    makeProduct,
+  }) => {
     const ok = await makeProduct({ stock: 10 });
     const scarce = await makeProduct({ stock: 1 });
     const res = await rest.post('/api/orders', {
       token: userServices.session.token,
-      data: { items: [{ productId: ok.id, quantity: 2 }, { productId: scarce.id, quantity: 3 }] },
+      data: {
+        items: [
+          { productId: ok.id, quantity: 2 },
+          { productId: scarce.id, quantity: 3 },
+        ],
+      },
     });
     expect(res.status()).toBe(409);
     // The first item's stock change must have been rolled back with the failed transaction.
     expect((await db.queryOne<{ stock: number }>('SELECT stock FROM products WHERE id = $1', [ok.id]))!.stock).toBe(10);
   });
 
-  test('status changes made through the API are persisted', async ({ db, userServices, adminServices, makeProduct }) => {
+  test('status changes made through the API are persisted', async ({
+    db,
+    userServices,
+    adminServices,
+    makeProduct,
+  }) => {
     const product = await makeProduct();
     const order = await userServices.orders.create([{ productId: product.id, quantity: 1 }]);
     await adminServices.orders.updateStatus(order.id, 'DELIVERED');
@@ -83,11 +117,19 @@ test.describe('Database validation', () => {
       { productId: a.id, quantity: 3 },
       { productId: b.id, quantity: 2 },
     ]);
-    const [{ sum }] = await db.query<{ sum: string }>('SELECT sum(quantity * unit_price) AS sum FROM order_items WHERE order_id = $1', [order.id]);
+    const [{ sum }] = await db.query<{ sum: string }>(
+      'SELECT sum(quantity * unit_price) AS sum FROM order_items WHERE order_id = $1',
+      [order.id],
+    );
     expect(Number(sum)).toBeCloseTo(order.total, 2);
   });
 
-  test('deleting a product removes its row; one referenced by an order cannot be deleted', async ({ db, adminServices, userServices, makeProduct }) => {
+  test('deleting a product removes its row; one referenced by an order cannot be deleted', async ({
+    db,
+    adminServices,
+    userServices,
+    makeProduct,
+  }) => {
     const free = await makeProduct();
     expect((await adminServices.products.remove(free.id)).status()).toBe(204);
     expect(await db.queryOne('SELECT 1 FROM products WHERE id = $1', [free.id])).toBeUndefined();

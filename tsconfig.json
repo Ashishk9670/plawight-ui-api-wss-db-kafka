@@ -17,9 +17,22 @@
       "@services/*": ["services/*"],
       "@fixtures/*": ["fixtures/*"],
       "@utils/*": ["utils/*"],
-      "@schemas": ["schemas/index.ts"]
+      "@schemas": ["schemas/index.ts"],
+      "@schemas/*": ["schemas/*"]
     }
   },
-  "include": ["schemas", "config", "pages", "components", "clients", "services", "fixtures", "utils", "tests", "playwright.config.ts", "global-setup.ts"],
+  "include": [
+    "schemas",
+    "config",
+    "pages",
+    "components",
+    "clients",
+    "services",
+    "fixtures",
+    "utils",
+    "tests",
+    "playwright.config.ts",
+    "global-setup.ts"
+  ],
   "exclude": ["aut", "node_modules"]
 }

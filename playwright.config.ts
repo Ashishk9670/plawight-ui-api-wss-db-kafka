@@ -13,9 +13,17 @@ export default defineConfig({
   workers: process.env.CI ? 4 : undefined,
   timeout: 30_000,
   expect: { timeout: 7_000 },
+  // Text snapshots (GraphQL schema) are platform independent; the visual project overrides this per platform.
+  snapshotPathTemplate: '{testDir}/__snapshots__/{testFilePath}/{arg}{ext}',
   reporter: process.env.CI
-    ? [['github'], ['html', { open: 'never' }], ['junit', { outputFile: 'test-results/junit.xml' }]]
-    : [['list'], ['html', { open: 'never' }]],
+    ? [
+        ['github'],
+        ['blob'],
+        ['html', { open: 'never' }],
+        ['junit', { outputFile: 'test-results/junit.xml' }],
+        ['allure-playwright', { resultsDir: 'allure-results' }],
+      ]
+    : [['list'], ['html', { open: 'never' }], ['allure-playwright', { resultsDir: 'allure-results' }]],
   use: {
     baseURL: env.BASE_URL,
     testIdAttribute: 'data-testid',
@@ -46,7 +54,22 @@ export default defineConfig({
       use: { ...devices['Desktop Safari'], storageState: USER_STORAGE_STATE },
       dependencies: ['setup'],
     },
-    // REST and GraphQL
+    // Mobile viewports (smoke only)
+    {
+      name: 'mobile-chrome',
+      testDir: './tests/ui',
+      grep: /@smoke/,
+      use: { ...devices['Pixel 7'], storageState: USER_STORAGE_STATE },
+      dependencies: ['setup'],
+    },
+    {
+      name: 'mobile-safari',
+      testDir: './tests/ui',
+      grep: /@smoke/,
+      use: { ...devices['iPhone 14'], storageState: USER_STORAGE_STATE },
+      dependencies: ['setup'],
+    },
+    // REST, GraphQL, contract and security
     { name: 'api', testDir: './tests/api' },
     { name: 'websocket', testDir: './tests/websocket' },
     { name: 'messaging', testDir: './tests/messaging' },

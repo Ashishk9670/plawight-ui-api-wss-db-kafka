@@ -22,6 +22,7 @@ const schema = z.object({
   USER_PASSWORD: z.string(),
   ADMIN_EMAIL: z.string().email(),
   ADMIN_PASSWORD: z.string(),
+  JWT_SECRET: z.string().default('aut-dev-secret'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 });
 

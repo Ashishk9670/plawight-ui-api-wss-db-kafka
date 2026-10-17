@@ -8,11 +8,11 @@ services:
       POSTGRES_PASSWORD: shop
       POSTGRES_DB: shop
     ports:
-      - "5433:5432"
+      - '5433:5432'
     volumes:
       - ../aut/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U shop -d shop"]
+      test: ['CMD-SHELL', 'pg_isready -U shop -d shop']
       interval: 5s
       timeout: 3s
       retries: 20
@@ -20,7 +20,7 @@ services:
   kafka:
     image: apache/kafka:3.8.0
     ports:
-      - "9094:9094"
+      - '9094:9094'
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -34,9 +34,10 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
     healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      test:
+        ['CMD-SHELL', '/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1']
       interval: 10s
       timeout: 10s
       retries: 20
@@ -53,8 +54,9 @@ services:
       DB_NAME: shop
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC_ORDERS: orders
+      ENABLE_TEST_API: 'true'
     ports:
-      - "3000:3000"
+      - '3000:3000'
     depends_on:
       postgres:
         condition: service_healthy

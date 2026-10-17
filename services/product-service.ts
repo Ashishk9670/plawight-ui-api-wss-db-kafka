@@ -1,10 +1,10 @@
 import { env } from '@config/env';
 import type { RestClient } from '@clients/rest-client';
+import type { components } from '@schemas/api.generated';
 import type { ProductInput } from '@utils/data-factory';
 
-export interface Product extends ProductInput {
-  id: number;
-}
+/** Generated from aut/openapi.json (npm run gen:api-types). */
+export type Product = components['schemas']['Product'];
 
 export class ProductService {
   constructor(private rest: RestClient) {}

@@ -5,3 +5,6 @@ playwright-report/
 logs/
 .env
 *.log
+allure-results/
+allure-report/
+blob-report/

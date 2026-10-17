@@ -31,6 +31,7 @@ test.describe('E2E order lifecycle', () => {
         await shopPage.expectCartTotal('39.98');
         return shopPage.submitOrderAndGetId();
       });
+
       await shopPage.expectOrder(orderId, { status: 'CREATED', total: '39.98' });
 
       // 2. REST
@@ -48,10 +49,15 @@ test.describe('E2E order lifecycle', () => {
 
       // 4. Database
       await test.step('DB: order row, item row and stock', async () => {
-        const row = await db.queryOne<{ status: string; total: string }>('SELECT status, total FROM orders WHERE id = $1', [orderId]);
+        const row = await db.queryOne<{ status: string; total: string }>(
+          'SELECT status, total FROM orders WHERE id = $1',
+          [orderId],
+        );
         expect(row).toMatchObject({ status: 'CREATED' });
         expect(Number(row!.total)).toBe(39.98);
-        const items = await db.query<{ quantity: number }>('SELECT quantity FROM order_items WHERE order_id = $1', [orderId]);
+        const items = await db.query<{ quantity: number }>('SELECT quantity FROM order_items WHERE order_id = $1', [
+          orderId,
+        ]);
         expect(items.map((i) => i.quantity)).toEqual([2]);
         const stock = await db.queryOne<{ stock: number }>('SELECT stock FROM products WHERE id = $1', [product.id]);
         expect(stock!.stock).toBe(23);
@@ -59,7 +65,9 @@ test.describe('E2E order lifecycle', () => {
 
       // 5. Kafka
       await test.step('Kafka: order.created event', async () => {
-        const event = await listener.waitForEvent((e) => e.value?.order?.id === orderId && e.value.eventType === 'order.created');
+        const event = await listener.waitForEvent(
+          (e) => e.value?.order?.id === orderId && e.value.eventType === 'order.created',
+        );
         expect(validate(OrderEventSchema, event.value).order.total).toBe(39.98);
       });
 
@@ -71,10 +79,13 @@ test.describe('E2E order lifecycle', () => {
 
       // 7. Admin ships the order via GraphQL; every layer follows
       await test.step('GraphQL (admin): ship the order', async () => {
-        const { errors, data } = await adminGraphql.execute<{ updateOrderStatus: { status: string } }>(UPDATE_ORDER_STATUS, {
-          id: orderId,
-          status: 'SHIPPED',
-        });
+        const { errors, data } = await adminGraphql.execute<{ updateOrderStatus: { status: string } }>(
+          UPDATE_ORDER_STATUS,
+          {
+            id: orderId,
+            status: 'SHIPPED',
+          },
+        );
         expect(errors).toBeUndefined();
         expect(data!.updateOrderStatus.status).toBe('SHIPPED');
       });
@@ -83,11 +94,17 @@ test.describe('E2E order lifecycle', () => {
         await expect(shopPage.orderStatus(orderId)).toHaveText('SHIPPED');
         await shopPage.toast.expectMessage(`Order #${orderId} is SHIPPED`);
       });
+
       await test.step('DB, Kafka and WebSocket reflect SHIPPED', async () => {
         await expect
-          .poll(async () => (await db.queryOne<{ status: string }>('SELECT status FROM orders WHERE id = $1', [orderId]))?.status)
+          .poll(
+            async () =>
+              (await db.queryOne<{ status: string }>('SELECT status FROM orders WHERE id = $1', [orderId]))?.status,
+          )
           .toBe('SHIPPED');
-        const event = await listener.waitForEvent((e) => e.value?.order?.id === orderId && e.value.eventType === 'order.updated');
+        const event = await listener.waitForEvent(
+          (e) => e.value?.order?.id === orderId && e.value.eventType === 'order.updated',
+        );
         expect(event.value.order.status).toBe('SHIPPED');
         await userSocket.waitForMessage((m) => m.orderId === orderId && m.status === 'SHIPPED');
       });
@@ -106,16 +123,26 @@ test.describe('E2E order lifecycle', () => {
     const product = await makeProduct({ stock: 1 });
     const listener = await kafka.listen();
     try {
-      const { data, errors } = await userGraphql.execute(CREATE_ORDER, { items: [{ productId: product.id, quantity: 3 }] });
+      const { data, errors } = await userGraphql.execute(CREATE_ORDER, {
+        items: [{ productId: product.id, quantity: 3 }],
+      });
       expect(data).toBeNull();
       expect(errors![0].extensions).toMatchObject({ code: '409' });
 
-      expect((await db.queryOne<{ stock: number }>('SELECT stock FROM products WHERE id = $1', [product.id]))!.stock).toBe(1);
-      const [{ count }] = await db.query<{ count: string }>('SELECT count(*) FROM order_items WHERE product_id = $1', [product.id]);
+      expect(
+        (await db.queryOne<{ stock: number }>('SELECT stock FROM products WHERE id = $1', [product.id]))!.stock,
+      ).toBe(1);
+      const [{ count }] = await db.query<{ count: string }>('SELECT count(*) FROM order_items WHERE product_id = $1', [
+        product.id,
+      ]);
       expect(Number(count)).toBe(0);
 
       await new Promise((r) => setTimeout(r, 1_000));
-      expect(listener.events.filter((e) => e.value?.order?.items?.some((i: { productId: number }) => i.productId === product.id))).toHaveLength(0);
+      expect(
+        listener.events.filter((e) =>
+          e.value?.order?.items?.some((i: { productId: number }) => i.productId === product.id),
+        ),
+      ).toHaveLength(0);
       // No orderId exists for a rejected order, so the socket cannot be checked per order; other tests
       // running in parallel push to the same user's socket.
       expect(userSocket.messages.some((m) => m.type === 'connected')).toBe(true);

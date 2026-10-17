@@ -38,12 +38,18 @@ export class ShopPage extends BasePage {
     await this.click(this.placeOrder, 'Place order');
   }
 
-  /** Places the order and returns the new order id parsed from the confirmation toast. */
+  /**
+   * Places the order and returns the new order id from the API response. The toast is not used because the
+   * WebSocket push ("Order #N is CREATED") replaces the "placed" toast within milliseconds.
+   */
   async submitOrderAndGetId(): Promise<number> {
+    const response = this.page.waitForResponse(
+      (r) => r.url().endsWith('/api/orders') && r.request().method() === 'POST',
+    );
     await this.submitOrder();
-    await expect(this.toast.root).toContainText(/Order #\d+ placed/);
-    const text = await this.toast.root.innerText();
-    return Number(/Order #(\d+) placed/.exec(text)![1]);
+    const res = await response;
+    if (res.status() !== 201) throw new Error(`Order was not created: ${res.status()} ${await res.text()}`);
+    return (await res.json()).id;
   }
 
   async getProductPrice(name: string): Promise<string> {

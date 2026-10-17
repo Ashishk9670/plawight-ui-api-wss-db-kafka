@@ -3,7 +3,10 @@ import { expect, test } from '@fixtures/base.fixture';
 import { validate } from '@utils/schema-validator';
 
 test.describe('REST /api/orders', () => {
-  test('creates an order, computes the total and matches the schema @smoke @api', async ({ userServices, makeProduct }) => {
+  test('creates an order, computes the total and matches the schema @smoke @api', async ({
+    userServices,
+    makeProduct,
+  }) => {
     const product = await makeProduct({ price: 20, stock: 10 });
     const order = validate(OrderSchema, await userServices.orders.create([{ productId: product.id, quantity: 3 }]));
     expect(order.status).toBe('CREATED');
@@ -67,14 +70,19 @@ test.describe('REST /api/orders', () => {
     expect(res.status()).toBe(401);
   });
 
-  test('a user cannot read another user\'s order (404)', async ({ rest, adminServices, userServices, makeProduct }) => {
+  test("a user cannot read another user's order (404)", async ({ rest, adminServices, userServices, makeProduct }) => {
     const product = await makeProduct();
     const adminOrder = await adminServices.orders.create([{ productId: product.id, quantity: 1 }]);
     const res = await rest.get(`/api/orders/${adminOrder.id}`, { token: userServices.session.token });
     expect(res.status()).toBe(404);
   });
 
-  test('the order list only contains the caller\'s orders', async ({ rest, userServices, adminServices, makeProduct }) => {
+  test("the order list only contains the caller's orders", async ({
+    rest,
+    userServices,
+    adminServices,
+    makeProduct,
+  }) => {
     const product = await makeProduct();
     const mine = await userServices.orders.create([{ productId: product.id, quantity: 1 }]);
     const theirs = await adminServices.orders.create([{ productId: product.id, quantity: 1 }]);

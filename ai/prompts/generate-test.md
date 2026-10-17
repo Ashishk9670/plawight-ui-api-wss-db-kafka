@@ -6,6 +6,7 @@ Prompt (fill in the scenario):
 > `tests/` first. Then write a new spec for this scenario: **<scenario>**.
 >
 > Requirements:
+>
 > - Use the existing fixtures, page objects and services; add a page-object method rather than putting locators in the spec.
 > - First walk the scenario with the Playwright MCP tools to confirm the real `data-testid` values and behaviour.
 > - Parallel-safe, self-cleaning, tagged, no `waitForTimeout`.

@@ -11,5 +11,5 @@ li { display: flex; justify-content: space-between; align-items: center; padding
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 6px; border-bottom: 1px solid #eee; }
 .error { color: #b00020; }
-#toast { position: fixed; top: 60px; right: 24px; background: #0b6; color: #fff; padding: 10px 16px; border-radius: 6px; }
+#toast { position: fixed; top: 60px; right: 24px; background: #00703c; color: #fff; padding: 10px 16px; border-radius: 6px; }
 [hidden] { display: none !important; }

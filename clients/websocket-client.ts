@@ -8,7 +8,10 @@ export class WebSocketClient {
   readonly messages: any[] = [];
   private listeners: (() => void)[] = [];
 
-  constructor(private token: string, private url = env.WS_URL) {}
+  constructor(
+    private token: string,
+    private url = env.WS_URL,
+  ) {}
 
   async connect(timeout = 5_000): Promise<void> {
     this.socket = new WebSocket(`${this.url}?token=${this.token}`);
@@ -56,7 +59,9 @@ export class WebSocketClient {
       };
       const timer = setTimeout(() => {
         cleanup();
-        reject(new Error(`No matching WebSocket message within ${timeout}ms. Received: ${JSON.stringify(this.messages)}`));
+        reject(
+          new Error(`No matching WebSocket message within ${timeout}ms. Received: ${JSON.stringify(this.messages)}`),
+        );
       }, timeout);
       this.listeners.push(check);
       check();

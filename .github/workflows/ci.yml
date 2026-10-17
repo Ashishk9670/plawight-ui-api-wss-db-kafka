@@ -18,8 +18,16 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
+env:
+  # Pull requests and pushes run @smoke; the nightly schedule and a manual "full" run execute everything.
+  FULL_RUN: ${{ github.event_name == 'schedule' || inputs.scope == 'full' }}
+
 jobs:
-  typecheck:
+  static:
+    name: typecheck + lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,68 +36,168 @@ jobs:
       - run: npm ci
       - run: npm ci --prefix aut
       - run: npm run typecheck
+      - run: npm run lint
 
   test:
-    needs: typecheck
+    name: test (${{ matrix.project }} ${{ matrix.shard || '1/1' }})
+    needs: static
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        project: [ui-chromium, api, websocket, messaging, db, e2e]
         include:
-          # Extra browsers run on the nightly / manual-full runs only
+          # Large projects are sharded across two jobs
+          - { project: ui-chromium, shard: '1/2' }
+          - { project: ui-chromium, shard: '2/2' }
+          - { project: api, shard: '1/2' }
+          - { project: api, shard: '2/2' }
+          - { project: websocket }
+          - { project: messaging }
+          - { project: db }
+          - { project: e2e }
+          # Extra browsers and devices run on the nightly / manual-full runs only
           - { project: ui-firefox, nightly: true }
           - { project: ui-webkit, nightly: true }
+          - { project: mobile-chrome, nightly: true }
+          - { project: mobile-safari, nightly: true }
     env:
       CI: true
-      # Pull requests and pushes run @smoke; schedule and a manual "full" run everything.
-      FULL_RUN: ${{ github.event_name == 'schedule' || inputs.scope == 'full' }}
+      SHARD: ${{ matrix.shard || '1/1' }}
+      ARTIFACT_ID: ${{ matrix.project }}-${{ strategy.job-index }}
     steps:
-      - name: Skip nightly-only browsers on PRs and pushes
-        if: ${{ matrix.nightly && env.FULL_RUN != 'true' }}
-        run: echo "Skipping ${{ matrix.project }} outside full runs"
+      - name: Skip nightly-only projects on PRs and pushes
+        id: gate
+        run: |
+          if [ "${{ matrix.nightly }}" = "true" ] && [ "$FULL_RUN" != "true" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping ${{ matrix.project }} outside full runs"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: actions/checkout@v4
-        if: ${{ !matrix.nightly || env.FULL_RUN == 'true' }}
+        if: steps.gate.outputs.run == 'true'
       - uses: actions/setup-node@v4
-        if: ${{ !matrix.nightly || env.FULL_RUN == 'true' }}
+        if: steps.gate.outputs.run == 'true'
         with: { node-version: 22, cache: npm }
       - run: npm ci
-        if: ${{ !matrix.nightly || env.FULL_RUN == 'true' }}
+        if: steps.gate.outputs.run == 'true'
 
+      - name: Cache Playwright browsers
+        if: steps.gate.outputs.run == 'true'
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Install Playwright browsers
-        if: ${{ startsWith(matrix.project, 'ui-') || matrix.project == 'e2e' }}
+        if: steps.gate.outputs.run == 'true' && (startsWith(matrix.project, 'ui-') || startsWith(matrix.project, 'mobile-') || matrix.project == 'e2e')
         run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Start the AUT (Postgres, Kafka, app)
-        if: ${{ !matrix.nightly || env.FULL_RUN == 'true' }}
+        if: steps.gate.outputs.run == 'true'
         run: npm run aut:up
 
       - name: Run tests
-        if: ${{ !matrix.nightly || env.FULL_RUN == 'true' }}
+        if: steps.gate.outputs.run == 'true'
         run: |
-          if [ "$FULL_RUN" = "true" ]; then
-            npx playwright test --project=${{ matrix.project }}
-          else
-            npx playwright test --project=${{ matrix.project }} --grep @smoke
-          fi
+          if [ "$FULL_RUN" = "true" ]; then GREP=""; else GREP="--grep @smoke"; fi
+          npx playwright test --project=${{ matrix.project }} --shard="$SHARD" $GREP
 
       - name: Show AUT logs on failure
         if: failure()
         run: docker compose -f docker/docker-compose.yml logs --no-color --tail=200
 
-      - name: Upload report
-        if: ${{ !cancelled() && (!matrix.nightly || env.FULL_RUN == 'true') }}
+      - name: Upload blob report and Allure results
+        if: ${{ !cancelled() && steps.gate.outputs.run == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.project }}
+          name: results-${{ env.ARTIFACT_ID }}
           path: |
-            playwright-report/
+            blob-report/
+            allure-results/
             test-results/
           retention-days: 14
           if-no-files-found: ignore
 
       - name: Stop the AUT
-        if: ${{ always() && (!matrix.nightly || env.FULL_RUN == 'true') }}
+        if: ${{ always() && steps.gate.outputs.run == 'true' }}
         run: npm run aut:down
+
+  report:
+    name: merged report
+    needs: test
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # PR summary comment
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: results-*
+          path: all-results
+      - name: Collect blob reports and Allure results
+        run: |
+          mkdir -p all-blob-reports allure-results
+          find all-results -path '*blob-report/*' -type f -exec cp {} all-blob-reports/ \;
+          find all-results -path '*allure-results/*' -type f -exec cp {} allure-results/ \;
+          ls all-blob-reports | head
+
+      - name: Merge into one HTML report and one JSON file
+        run: |
+          PLAYWRIGHT_JSON_OUTPUT_NAME=merged.json npx playwright merge-reports --reporter=html,json ./all-blob-reports
+        env:
+          PLAYWRIGHT_HTML_OPEN: never
+
+      - name: Job summary (and PR comment on pull requests)
+        run: node scripts/ci-summary.mjs merged.json > summary.md
+      - run: cat summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Comment on the pull request
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: gh pr comment "${{ github.event.pull_request.number }}" --body-file summary.md --edit-last --create-if-none
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Generate the Allure report
+        run: npm run allure:generate
+      - uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  pages:
+    name: publish report to GitHub Pages
+    needs: report
+    # Opt-in: set the repository variable ENABLE_PAGES=true and Settings > Pages > Source = GitHub Actions.
+    if: ${{ !cancelled() && vars.ENABLE_PAGES == 'true' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: playwright-report
+          path: site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

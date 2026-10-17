@@ -16,7 +16,11 @@ test.describe('GraphQL orders', () => {
     expect(order).toMatchObject({ status: 'CREATED', total: 30 });
   });
 
-  test('orders query returns the caller\'s orders; order(id) returns one', async ({ userGraphql, userServices, makeProduct }) => {
+  test("orders query returns the caller's orders; order(id) returns one", async ({
+    userGraphql,
+    userServices,
+    makeProduct,
+  }) => {
     const product = await makeProduct();
     const created = await userServices.orders.create([{ productId: product.id, quantity: 1 }]);
 
@@ -27,7 +31,7 @@ test.describe('GraphQL orders', () => {
     expect(one.data!.order).toEqual(created);
   });
 
-  test('order(id) of another user\'s order is null', async ({ userGraphql, adminServices, makeProduct }) => {
+  test("order(id) of another user's order is null", async ({ userGraphql, adminServices, makeProduct }) => {
     const product = await makeProduct();
     const adminOrder = await adminServices.orders.create([{ productId: product.id, quantity: 1 }]);
     const { data, errors } = await userGraphql.execute<{ order: Order | null }>(ORDER, { id: adminOrder.id });
@@ -53,7 +57,11 @@ test.describe('GraphQL orders', () => {
     expect(errors![0]).toMatchObject({ message: 'Unauthorized', extensions: { code: 'UNAUTHENTICATED' } });
   });
 
-  test('a regular user calling updateOrderStatus gets FORBIDDEN', async ({ userGraphql, userServices, makeProduct }) => {
+  test('a regular user calling updateOrderStatus gets FORBIDDEN', async ({
+    userGraphql,
+    userServices,
+    makeProduct,
+  }) => {
     const product = await makeProduct();
     const created = await userServices.orders.create([{ productId: product.id, quantity: 1 }]);
     const { errors } = await userGraphql.execute(UPDATE_ORDER_STATUS, { id: created.id, status: 'PAID' });
@@ -62,9 +70,14 @@ test.describe('GraphQL orders', () => {
 
   test('createOrder with insufficient stock returns a 409 error and no order', async ({ userGraphql, makeProduct }) => {
     const product = await makeProduct({ stock: 1 });
-    const { data, errors } = await userGraphql.execute(CREATE_ORDER, { items: [{ productId: product.id, quantity: 9 }] });
+    const { data, errors } = await userGraphql.execute(CREATE_ORDER, {
+      items: [{ productId: product.id, quantity: 9 }],
+    });
     expect(data).toBeNull();
-    expect(errors![0]).toMatchObject({ message: expect.stringContaining('Insufficient stock'), extensions: { code: '409' } });
+    expect(errors![0]).toMatchObject({
+      message: expect.stringContaining('Insufficient stock'),
+      extensions: { code: '409' },
+    });
   });
 
   test('createOrder for an unknown product returns a 404 error', async ({ userGraphql }) => {
@@ -72,7 +85,11 @@ test.describe('GraphQL orders', () => {
     expect(errors![0].extensions).toMatchObject({ code: '404' });
   });
 
-  test('updateOrderStatus with an invalid status returns a 400 error', async ({ adminGraphql, userServices, makeProduct }) => {
+  test('updateOrderStatus with an invalid status returns a 400 error', async ({
+    adminGraphql,
+    userServices,
+    makeProduct,
+  }) => {
     const product = await makeProduct();
     const created = await userServices.orders.create([{ productId: product.id, quantity: 1 }]);
     const { errors } = await adminGraphql.execute(UPDATE_ORDER_STATUS, { id: created.id, status: 'NOPE' });

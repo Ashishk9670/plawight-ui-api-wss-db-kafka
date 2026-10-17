@@ -28,7 +28,9 @@ export class GraphQLClient {
       headers: this.token ? { Authorization: `Bearer ${this.token}` } : {},
     });
     const body = (await res.json()) as GraphQLResponse<T>;
-    logger.info(`GraphQL ${query.trim().split(/[({\s]/)[1] ?? 'op'} -> ${res.status()}${body.errors ? ' (errors)' : ''}`);
+    logger.info(
+      `GraphQL ${query.trim().split(/[({\s]/)[1] ?? 'op'} -> ${res.status()}${body.errors ? ' (errors)' : ''}`,
+    );
     return { status: res.status(), body };
   }
 

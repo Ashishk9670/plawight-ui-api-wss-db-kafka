@@ -8,6 +8,7 @@ import { ShopPage } from '@pages/shop-page';
 import { AuthService, type LoginResult } from '@services/auth-service';
 import { OrderService } from '@services/order-service';
 import { ProductService, type Product } from '@services/product-service';
+import { SeedService } from '@services/seed-service';
 import { buildProduct, type ProductInput } from '@utils/data-factory';
 import { DbClient } from '@utils/db-client';
 import { logger } from '@utils/logger';
@@ -35,6 +36,8 @@ interface TestFixtures {
   adminSocket: WebSocketClient;
   /** Register teardown work; runs after the test in reverse order, even when the test fails. */
   cleanup: { add(fn: () => Promise<unknown>): void };
+  /** Seeding API (admin). Products created through it are removed after the test. */
+  seed: SeedService;
   /** Creates a product through the admin API and removes it (and any orders for it) afterwards. */
   makeProduct: (overrides?: Partial<ProductInput>) => Promise<Product>;
 }
@@ -104,11 +107,20 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     }
   },
 
+  seed: async ({ rest, adminServices, cleanup }, use) => {
+    const service = new SeedService(rest.withToken(adminServices.session.token), (p) =>
+      cleanup.add(() => service.removeProduct(p.id)),
+    );
+    await use(service);
+  },
+
   makeProduct: async ({ adminServices, db, cleanup }, use) => {
     await use(async (overrides = {}) => {
       const product = await adminServices.products.create(buildProduct(overrides));
       cleanup.add(async () => {
-        await db.query('DELETE FROM orders WHERE id IN (SELECT order_id FROM order_items WHERE product_id = $1)', [product.id]);
+        await db.query('DELETE FROM orders WHERE id IN (SELECT order_id FROM order_items WHERE product_id = $1)', [
+          product.id,
+        ]);
         await db.query('DELETE FROM products WHERE id = $1', [product.id]);
       });
       return product;

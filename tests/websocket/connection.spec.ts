@@ -2,7 +2,10 @@ import { WebSocketClient } from '@clients/websocket-client';
 import { expect, test } from '@fixtures/base.fixture';
 
 test.describe('WebSocket connection', () => {
-  test('connects with a valid token and receives a welcome message @smoke @ws', async ({ userSocket, userServices }) => {
+  test('connects with a valid token and receives a welcome message @smoke @ws', async ({
+    userSocket,
+    userServices,
+  }) => {
     const msg = await userSocket.waitForMessage((m) => m.type === 'connected');
     expect(msg).toEqual({ type: 'connected', userId: userServices.session.user.id });
   });

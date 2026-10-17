@@ -16,7 +16,10 @@ export class KafkaListener {
   readonly events: KafkaEvent[] = [];
   private consumer?: Consumer;
 
-  constructor(private kafka: Kafka, private topic: string) {}
+  constructor(
+    private kafka: Kafka,
+    private topic: string,
+  ) {}
 
   async start() {
     this.consumer = this.kafka.consumer({ groupId: `pw-${Date.now()}-${Math.random().toString(36).slice(2)}` });

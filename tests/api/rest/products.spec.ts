@@ -54,7 +54,14 @@ test.describe('REST /api/products', () => {
       data: { name: 'Renamed', description: 'd', category: 'c', price: 9.99, stock: 3 },
     });
     expect(res.status()).toBe(200);
-    expect(await res.json()).toEqual({ id: p.id, name: 'Renamed', description: 'd', category: 'c', price: 9.99, stock: 3 });
+    expect(await res.json()).toEqual({
+      id: p.id,
+      name: 'Renamed',
+      description: 'd',
+      category: 'c',
+      price: 9.99,
+      stock: 3,
+    });
   });
 
   test('admin can partially update a product (PATCH)', async ({ rest, adminServices, makeProduct }) => {

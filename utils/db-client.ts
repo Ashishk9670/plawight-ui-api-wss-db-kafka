@@ -18,7 +18,10 @@ export class DbClient {
     return rows;
   }
 
-  async queryOne<T extends QueryResultRow = QueryResultRow>(sql: string, params: unknown[] = []): Promise<T | undefined> {
+  async queryOne<T extends QueryResultRow = QueryResultRow>(
+    sql: string,
+    params: unknown[] = [],
+  ): Promise<T | undefined> {
     return (await this.query<T>(sql, params))[0];
   }
 

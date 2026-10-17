@@ -6,6 +6,8 @@ export interface RequestOptions {
   params?: Record<string, string | number | boolean>;
   headers?: Record<string, string>;
   token?: string;
+  /** Milliseconds; Playwright's default (30s) applies when omitted. */
+  timeout?: number;
 }
 
 /** Thin wrapper over Playwright's APIRequestContext: auth header + request/response logging. */
@@ -26,6 +28,7 @@ export class RestClient {
       method,
       data: opts.data,
       params: opts.params,
+      timeout: opts.timeout,
       headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...opts.headers },
     });
     logger.info(`${method} ${url} -> ${res.status()} (${Date.now() - started}ms)`);

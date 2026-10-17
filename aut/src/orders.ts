@@ -44,8 +44,15 @@ export async function getProduct(id: number) {
   return rows[0] ? mapProduct(rows[0]) : null;
 }
 
-export async function createProduct(p: { name: string; description?: string; category?: string; price: number; stock?: number }) {
-  if (!p.name || typeof p.price !== 'number' || p.price < 0) throw new HttpError(400, 'name and a non-negative price are required');
+export async function createProduct(p: {
+  name: string;
+  description?: string;
+  category?: string;
+  price: number;
+  stock?: number;
+}) {
+  if (!p.name || typeof p.price !== 'number' || p.price < 0)
+    throw new HttpError(400, 'name and a non-negative price are required');
   const { rows } = await pool.query(
     `INSERT INTO products (name, description, category, price, stock) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
     [p.name, p.description ?? '', p.category ?? 'general', p.price, p.stock ?? 0],
@@ -53,7 +60,10 @@ export async function createProduct(p: { name: string; description?: string; cat
   return mapProduct(rows[0]);
 }
 
-export async function updateProduct(id: number, p: Partial<{ name: string; description: string; category: string; price: number; stock: number }>) {
+export async function updateProduct(
+  id: number,
+  p: Partial<{ name: string; description: string; category: string; price: number; stock: number }>,
+) {
   const current = await getProduct(id);
   if (!current) throw new HttpError(404, 'Product not found');
   const m = { ...current, ...p };
@@ -90,15 +100,20 @@ export async function getOrder(id: number): Promise<Order | null> {
     status: rows[0].status,
     total: Number(rows[0].total),
     createdAt: new Date(rows[0].created_at).toISOString(),
-    items: items.rows.map((i) => ({ productId: i.product_id, name: i.name, quantity: i.quantity, unitPrice: Number(i.unit_price) })),
+    items: items.rows.map((i) => ({
+      productId: i.product_id,
+      name: i.name,
+      quantity: i.quantity,
+      unitPrice: Number(i.unit_price),
+    })),
   };
 }
 
 export async function listOrders(userId: number, isAdmin: boolean) {
-  const { rows } = await pool.query(
-    `SELECT id FROM orders WHERE ($1::boolean OR user_id = $2) ORDER BY id DESC`,
-    [isAdmin, userId],
-  );
+  const { rows } = await pool.query(`SELECT id FROM orders WHERE ($1::boolean OR user_id = $2) ORDER BY id DESC`, [
+    isAdmin,
+    userId,
+  ]);
   return (await Promise.all(rows.map((r) => getOrder(r.id)))) as Order[];
 }
 
@@ -122,10 +137,19 @@ export async function createOrder(userId: number, items: OrderItemInput[]): Prom
       priced.push({ ...item, price: Number(rows[0].price) });
       total += Number(rows[0].price) * item.quantity;
     }
-    const created = await client.query('INSERT INTO orders (user_id, status, total) VALUES ($1, $2, $3) RETURNING id', [userId, 'CREATED', total.toFixed(2)]);
+    const created = await client.query('INSERT INTO orders (user_id, status, total) VALUES ($1, $2, $3) RETURNING id', [
+      userId,
+      'CREATED',
+      total.toFixed(2),
+    ]);
     orderId = created.rows[0].id;
     for (const p of priced) {
-      await client.query('INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES ($1,$2,$3,$4)', [orderId, p.productId, p.quantity, p.price]);
+      await client.query('INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES ($1,$2,$3,$4)', [
+        orderId,
+        p.productId,
+        p.quantity,
+        p.price,
+      ]);
     }
     await client.query('COMMIT');
   } catch (e) {
@@ -142,7 +166,8 @@ export async function createOrder(userId: number, items: OrderItemInput[]): Prom
 }
 
 export async function updateOrderStatus(id: number, status: string): Promise<Order> {
-  if (!ORDER_STATUSES.includes(status as OrderStatus)) throw new HttpError(400, `status must be one of ${ORDER_STATUSES.join(', ')}`);
+  if (!ORDER_STATUSES.includes(status as OrderStatus))
+    throw new HttpError(400, `status must be one of ${ORDER_STATUSES.join(', ')}`);
   const { rowCount } = await pool.query('UPDATE orders SET status = $2 WHERE id = $1', [id, status]);
   if (!rowCount) throw new HttpError(404, 'Order not found');
   const order = (await getOrder(id))!;

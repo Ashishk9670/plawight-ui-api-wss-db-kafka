@@ -1,0 +1,30 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      playwright:
+        patterns: ['@playwright/*', 'playwright*', '@axe-core/*']
+      lint:
+        patterns: ['eslint*', '@eslint/*', 'typescript-eslint', 'prettier', 'husky', 'lint-staged']
+      graphql:
+        patterns: ['graphql', '@graphql-codegen/*']
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: npm
+    directory: /aut
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+
+  - package-ecosystem: docker
+    directory: /aut
+    schedule: { interval: weekly }
+
+  - package-ecosystem: docker-compose
+    directory: /docker
+    schedule: { interval: weekly }
