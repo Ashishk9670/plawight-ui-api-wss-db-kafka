@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shop AUT</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header data-testid="header">
+    <h1>Shop AUT</h1>
+    <div id="user-area" hidden>
+      <span data-testid="user-name"></span>
+      <button data-testid="logout-button" id="logout">Logout</button>
+    </div>
+  </header>
+
+  <div data-testid="toast" id="toast" role="status" hidden></div>
+
+  <main>
+    <section id="login-view" data-testid="login-view">
+      <h2>Login</h2>
+      <form id="login-form" data-testid="login-form">
+        <label>Email <input data-testid="login-email" name="email" type="email" /></label>
+        <label>Password <input data-testid="login-password" name="password" type="password" /></label>
+        <button data-testid="login-submit" type="submit">Sign in</button>
+        <p data-testid="login-error" id="login-error" class="error" hidden></p>
+      </form>
+    </section>
+
+    <section id="shop-view" data-testid="shop-view" hidden>
+      <div class="col">
+        <h2>Products</h2>
+        <input data-testid="product-search" id="search" placeholder="Search products" />
+        <ul data-testid="product-list" id="product-list"></ul>
+      </div>
+      <div class="col">
+        <h2>Cart</h2>
+        <ul data-testid="cart-list" id="cart-list"></ul>
+        <p>Total: <strong data-testid="cart-total" id="cart-total">0.00</strong></p>
+        <button data-testid="place-order" id="place-order">Place order</button>
+
+        <h2>My orders</h2>
+        <table data-testid="orders-table">
+          <thead><tr><th>ID</th><th>Total</th><th>Status</th></tr></thead>
+          <tbody id="orders-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

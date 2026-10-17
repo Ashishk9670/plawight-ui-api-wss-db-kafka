@@ -1,0 +1,29 @@
+{
+  "name": "shop-aut",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Application Under Test: UI + REST + GraphQL + WebSocket + Postgres + Kafka",
+  "scripts": {
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "graphql": "^16.9.0",
+    "graphql-http": "^1.22.3",
+    "jsonwebtoken": "^9.0.2",
+    "kafkajs": "^2.2.4",
+    "pg": "^8.13.1",
+    "tsx": "^4.19.2",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.10",
+    "@types/ws": "^8.5.13",
+    "typescript": "^5.7.2"
+  }
+}
