@@ -13,7 +13,9 @@ export default defineConfig({
   workers: process.env.CI ? 4 : undefined,
   timeout: 30_000,
   expect: { timeout: 7_000 },
-  reporter: [['list'], ['html', { open: 'never' }]],
+  reporter: process.env.CI
+    ? [['github'], ['html', { open: 'never' }], ['junit', { outputFile: 'test-results/junit.xml' }]]
+    : [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: env.BASE_URL,
     testIdAttribute: 'data-testid',
@@ -44,6 +46,16 @@ export default defineConfig({
       use: { ...devices['Desktop Safari'], storageState: USER_STORAGE_STATE },
       dependencies: ['setup'],
     },
+    // REST and GraphQL
     { name: 'api', testDir: './tests/api' },
+    { name: 'websocket', testDir: './tests/websocket' },
+    { name: 'messaging', testDir: './tests/messaging' },
+    { name: 'db', testDir: './tests/db' },
+    {
+      name: 'e2e',
+      testDir: './tests/e2e',
+      use: { ...devices['Desktop Chrome'], storageState: USER_STORAGE_STATE },
+      dependencies: ['setup'],
+    },
   ],
 });

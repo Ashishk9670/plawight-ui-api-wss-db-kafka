@@ -7,8 +7,16 @@ import { LoginPage } from '@pages/login-page';
 import { ShopPage } from '@pages/shop-page';
 import { AuthService, type LoginResult } from '@services/auth-service';
 import { OrderService } from '@services/order-service';
-import { ProductService } from '@services/product-service';
+import { ProductService, type Product } from '@services/product-service';
+import { buildProduct, type ProductInput } from '@utils/data-factory';
 import { DbClient } from '@utils/db-client';
+import { logger } from '@utils/logger';
+
+interface RoleServices {
+  orders: OrderService;
+  products: ProductService;
+  session: LoginResult;
+}
 
 interface TestFixtures {
   loginPage: LoginPage;
@@ -16,11 +24,19 @@ interface TestFixtures {
   rest: RestClient;
   authService: AuthService;
   /** Services authenticated as the standard user / as admin. */
-  userServices: { orders: OrderService; products: ProductService; session: LoginResult };
-  adminServices: { orders: OrderService; products: ProductService; session: LoginResult };
+  userServices: RoleServices;
+  adminServices: RoleServices;
+  /** GraphQL clients: anonymous, standard user, admin. */
   graphql: GraphQLClient;
-  /** Connected WebSocket client for the standard user; closed after the test. */
+  userGraphql: GraphQLClient;
+  adminGraphql: GraphQLClient;
+  /** Connected WebSocket clients, closed after the test. */
   userSocket: WebSocketClient;
+  adminSocket: WebSocketClient;
+  /** Register teardown work; runs after the test in reverse order, even when the test fails. */
+  cleanup: { add(fn: () => Promise<unknown>): void };
+  /** Creates a product through the admin API and removes it (and any orders for it) afterwards. */
+  makeProduct: (overrides?: Partial<ProductInput>) => Promise<Product>;
 }
 
 interface WorkerFixtures {
@@ -60,11 +76,43 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await use({ orders: new OrderService(authed), products: new ProductService(authed), session });
   },
 
+  userGraphql: async ({ graphql, userServices }, use) => use(graphql.withToken(userServices.session.token)),
+  adminGraphql: async ({ graphql, adminServices }, use) => use(graphql.withToken(adminServices.session.token)),
+
   userSocket: async ({ userServices }, use) => {
     const socket = new WebSocketClient(userServices.session.token);
     await socket.connect();
     await use(socket);
     await socket.close();
+  },
+  adminSocket: async ({ adminServices }, use) => {
+    const socket = new WebSocketClient(adminServices.session.token);
+    await socket.connect();
+    await use(socket);
+    await socket.close();
+  },
+
+  cleanup: async ({}, use) => {
+    const tasks: (() => Promise<unknown>)[] = [];
+    await use({ add: (fn) => void tasks.push(fn) });
+    for (const task of tasks.reverse()) {
+      try {
+        await task();
+      } catch (e) {
+        logger.warn(`Cleanup failed: ${String(e)}`);
+      }
+    }
+  },
+
+  makeProduct: async ({ adminServices, db, cleanup }, use) => {
+    await use(async (overrides = {}) => {
+      const product = await adminServices.products.create(buildProduct(overrides));
+      cleanup.add(async () => {
+        await db.query('DELETE FROM orders WHERE id IN (SELECT order_id FROM order_items WHERE product_id = $1)', [product.id]);
+        await db.query('DELETE FROM products WHERE id = $1', [product.id]);
+      });
+      return product;
+    });
   },
 });
 

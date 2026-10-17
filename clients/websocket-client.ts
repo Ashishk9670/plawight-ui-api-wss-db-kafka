@@ -36,6 +36,11 @@ export class WebSocketClient {
     this.socket?.send(JSON.stringify(message));
   }
 
+  /** Sends text as-is, e.g. to test how the server handles malformed JSON. */
+  sendRaw(text: string) {
+    this.socket?.send(text);
+  }
+
   waitForMessage<T = any>(predicate: (m: any) => boolean, timeout = 10_000): Promise<T> {
     return new Promise((resolve, reject) => {
       const check = () => {

@@ -22,6 +22,8 @@ export class KafkaListener {
     this.consumer = this.kafka.consumer({ groupId: `pw-${Date.now()}-${Math.random().toString(36).slice(2)}` });
     await this.consumer.connect();
     await this.consumer.subscribe({ topic: this.topic, fromBeginning: false });
+    // Resolve only once partitions are assigned, so events produced right after start() are not missed.
+    const joined = new Promise<void>((resolve) => this.consumer!.on(this.consumer!.events.GROUP_JOIN, () => resolve()));
     await this.consumer.run({
       eachMessage: async ({ topic, message }) => {
         const value = JSON.parse(message.value?.toString() ?? 'null');
@@ -29,6 +31,7 @@ export class KafkaListener {
         this.events.push({ key: message.key?.toString() ?? null, value, topic });
       },
     });
+    await joined;
   }
 
   async waitForEvent<T = any>(predicate: (e: KafkaEvent) => boolean, timeout = 15_000): Promise<KafkaEvent<T>> {

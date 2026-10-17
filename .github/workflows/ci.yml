@@ -1,0 +1,95 @@
+name: Playwright CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * *' # nightly full regression (UTC)
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'smoke or full'
+        default: smoke
+        type: choice
+        options: [smoke, full]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm ci --prefix aut
+      - run: npm run typecheck
+
+  test:
+    needs: typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [ui-chromium, api, websocket, messaging, db, e2e]
+        include:
+          # Extra browsers run on the nightly / manual-full runs only
+          - { project: ui-firefox, nightly: true }
+          - { project: ui-webkit, nightly: true }
+    env:
+      CI: true
+      # Pull requests and pushes run @smoke; schedule and a manual "full" run everything.
+      FULL_RUN: ${{ github.event_name == 'schedule' || inputs.scope == 'full' }}
+    steps:
+      - name: Skip nightly-only browsers on PRs and pushes
+        if: ${{ matrix.nightly && env.FULL_RUN != 'true' }}
+        run: echo "Skipping ${{ matrix.project }} outside full runs"
+
+      - uses: actions/checkout@v4
+        if: ${{ !matrix.nightly || env.FULL_RUN == 'true' }}
+      - uses: actions/setup-node@v4
+        if: ${{ !matrix.nightly || env.FULL_RUN == 'true' }}
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+        if: ${{ !matrix.nightly || env.FULL_RUN == 'true' }}
+
+      - name: Install Playwright browsers
+        if: ${{ startsWith(matrix.project, 'ui-') || matrix.project == 'e2e' }}
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Start the AUT (Postgres, Kafka, app)
+        if: ${{ !matrix.nightly || env.FULL_RUN == 'true' }}
+        run: npm run aut:up
+
+      - name: Run tests
+        if: ${{ !matrix.nightly || env.FULL_RUN == 'true' }}
+        run: |
+          if [ "$FULL_RUN" = "true" ]; then
+            npx playwright test --project=${{ matrix.project }}
+          else
+            npx playwright test --project=${{ matrix.project }} --grep @smoke
+          fi
+
+      - name: Show AUT logs on failure
+        if: failure()
+        run: docker compose -f docker/docker-compose.yml logs --no-color --tail=200
+
+      - name: Upload report
+        if: ${{ !cancelled() && (!matrix.nightly || env.FULL_RUN == 'true') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.project }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Stop the AUT
+        if: ${{ always() && (!matrix.nightly || env.FULL_RUN == 'true') }}
+        run: npm run aut:down
