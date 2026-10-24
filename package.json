@@ -34,7 +34,8 @@
     "gen:api-types": "openapi-typescript aut/openapi.json -o schemas/api.generated.ts",
     "gen:graphql-types": "graphql-codegen --config codegen.ts",
     "gen": "npm run gen:api-types && npm run gen:graphql-types",
-    "prepare": "husky || true"
+    "prepare": "husky || true",
+    "aut:up:ci": "docker compose -f docker/docker-compose.yml up -d --wait --no-build"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",

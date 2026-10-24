@@ -4,20 +4,20 @@ Roadmap and rationale: [PLAN.md](PLAN.md).
 
 ## What is covered
 
-| Area                  | Where                                             | Notes                                                                   |
-| --------------------- | ------------------------------------------------- | ----------------------------------------------------------------------- |
-| UI (POM + components) | `tests/ui`                                        | Chromium full run, Firefox/WebKit/mobile smoke, shared login session    |
-| REST                  | `tests/api/rest`                                  | CRUD, auth, negative cases, chaining                                    |
-| GraphQL               | `tests/api/graphql`                               | queries, mutations, variables, error handling                           |
-| Contract              | `tests/api/contract`                              | responses validated against `aut/openapi.json`; GraphQL schema snapshot |
-| Security              | `tests/api/security`, `tests/ui/security.spec.ts` | JWT tampering, injection, XSS, rate limit, headers                      |
-| Concurrency           | `tests/api/concurrency.spec.ts`                   | parallel orders never oversell                                          |
-| WebSocket             | `tests/websocket`                                 | auth, ping/echo, per-user order pushes                                  |
-| Kafka                 | `tests/messaging`                                 | event payloads, ordering, no event on rejection                         |
-| Database              | `tests/db`                                        | persistence, rollback, stock, referential integrity                     |
-| E2E                   | `tests/e2e`                                       | UI -> REST/GraphQL -> DB -> Kafka -> WebSocket -> UI                    |
-| Accessibility         | `tests/ui/a11y.spec.ts`                           | axe, WCAG 2.1 AA, keyboard-only login                                   |
-| Opt-in suites         | `tests/perf`, `tests/visual`, `tests/chaos`       | run with their own scripts (below)                                      |
+| Area                  | Where                                                     | Notes                                                                   |
+| --------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------- |
+| UI (POM + components) | `tests/ui`                                                | Chromium full run, Firefox/WebKit/mobile smoke, shared login session    |
+| REST                  | `tests/api/rest`                                          | CRUD, auth, negative cases, chaining                                    |
+| GraphQL               | `tests/api/graphql`                                       | queries, mutations, variables, error handling                           |
+| Contract              | `tests/api/contract`                                      | responses validated against `aut/openapi.json`; GraphQL schema snapshot |
+| Security              | `tests/api/security`, `tests/ui/security.spec.ts`         | JWT tampering, injection, XSS, rate limit, headers                      |
+| Concurrency           | `tests/api/concurrency.spec.ts`                           | parallel orders never oversell                                          |
+| WebSocket             | `tests/websocket`, `tests/ui/websocket-reconnect.spec.ts` | auth, ping/echo, per-user pushes, UI reconnect and resync               |
+| Kafka                 | `tests/messaging`                                         | event payloads, ordering, no event on rejection                         |
+| Database              | `tests/db`                                                | persistence, rollback, stock, referential integrity                     |
+| E2E                   | `tests/e2e`                                               | UI -> REST/GraphQL -> DB -> Kafka -> WebSocket -> UI                    |
+| Accessibility         | `tests/ui/a11y.spec.ts`                                   | axe, WCAG 2.1 AA, keyboard-only login                                   |
+| Opt-in suites         | `tests/perf`, `tests/visual`, `tests/chaos`               | run with their own scripts (below)                                      |
 
 ## Layout
 
@@ -38,7 +38,7 @@ Roadmap and rationale: [PLAN.md](PLAN.md).
 
 ```bash
 npm install && npx playwright install
-npm run aut:up            # needs Docker. UI http://localhost:3000, GraphQL /graphql, WS /ws, spec /openapi.json
+npm run aut:up            # needs Docker (CI uses aut:up:ci with a pre-built image). UI http://localhost:3000, GraphQL /graphql, WS /ws, spec /openapi.json
 npm test                  # every default project
 npm run test:smoke        # @smoke tier
 npm run test:regression   # everything except @smoke and @slow
@@ -69,8 +69,21 @@ See [.github/copilot-instructions.md](.github/copilot-instructions.md). Tests mu
 `makeProduct` or `seed`, match Kafka and WebSocket messages by order id, and clean up through fixtures. A pre-commit
 hook (Husky) runs lint-staged and the typecheck.
 
-## Known issues in the AUT (found by these tests)
+## Bugs these tests found in the AUT (all fixed)
 
-- If Kafka is down, `POST /api/orders` commits the order and then returns 500, so a client retry creates a duplicate.
-  Documented by `tests/chaos/kafka-outage.spec.ts` (`test.fail`), which starts failing once the AUT is fixed.
-- Fixed along the way: stored XSS in product names, toast colour contrast.
+- Stored XSS in product names (`tests/ui/security.spec.ts`).
+- Toast colour contrast below WCAG AA (`tests/ui/a11y.spec.ts`).
+- With Kafka down, `POST /api/orders` committed the order and then returned 500, so a client retry created a duplicate.
+  The AUT now compensates (stock restored, order removed) and answers 503; a failed status update is reverted.
+  Regression tests: `tests/chaos/kafka-outage.spec.ts`.
+- The Kafka producer hung requests for minutes during an outage; it now fails within seconds.
+- The UI never reconnected its WebSocket and missed updates; it now reconnects and resyncs
+  (`tests/ui/websocket-reconnect.spec.ts`).
+
+## Limits to know about
+
+- Firefox cannot be launched from some sandboxed shells ("Could not find profile folder"). It runs fine in CI;
+  run `npm run test:ui -- --project=ui-firefox` from a normal terminal.
+- CI caches npm, Playwright browsers and the AUT image layers. The Postgres and Kafka images are pulled on every job.
+- The Pages report (`ENABLE_PAGES=true`) and the AI triage workflow (`ENABLE_AI_TRIAGE=true` plus the
+  `ANTHROPIC_API_KEY` secret) are opt-in and need repository settings only you can change.

@@ -1,9 +1,8 @@
 import { PRODUCT, PRODUCTS } from '@clients/graphql-operations';
 import { ProductSchema } from '@schemas';
+import type { Product } from '@schemas/graphql.generated';
 import { expect, test } from '@fixtures/base.fixture';
 import { validate } from '@utils/schema-validator';
-
-type Product = { id: number; name: string; category: string };
 
 test.describe('GraphQL products', () => {
   test('products query returns the seeded catalogue @smoke @graphql', async ({ graphql }) => {

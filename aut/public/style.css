@@ -1,15 +1,76 @@
-body { font-family: system-ui, sans-serif; margin: 0; background: #f6f7f9; color: #1b1f23; }
-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 24px; background: #1b1f23; color: #fff; }
-header h1 { font-size: 18px; margin: 0; }
-main { padding: 24px; }
-#shop-view { display: flex; gap: 24px; }
-.col { flex: 1; background: #fff; padding: 16px; border-radius: 8px; }
-form { display: grid; gap: 12px; max-width: 320px; }
-label { display: grid; gap: 4px; }
-ul { list-style: none; padding: 0; }
-li { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; }
-table { width: 100%; border-collapse: collapse; }
-th, td { text-align: left; padding: 6px; border-bottom: 1px solid #eee; }
-.error { color: #b00020; }
-#toast { position: fixed; top: 60px; right: 24px; background: #00703c; color: #fff; padding: 10px 16px; border-radius: 6px; }
-[hidden] { display: none !important; }
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  background: #f6f7f9;
+  color: #1b1f23;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  background: #1b1f23;
+  color: #fff;
+}
+header h1 {
+  font-size: 18px;
+  margin: 0;
+}
+main {
+  padding: 24px;
+}
+#shop-view {
+  display: flex;
+  gap: 24px;
+}
+.col {
+  flex: 1;
+  background: #fff;
+  padding: 16px;
+  border-radius: 8px;
+}
+form {
+  display: grid;
+  gap: 12px;
+  max-width: 320px;
+}
+label {
+  display: grid;
+  gap: 4px;
+}
+ul {
+  list-style: none;
+  padding: 0;
+}
+li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th,
+td {
+  text-align: left;
+  padding: 6px;
+  border-bottom: 1px solid #eee;
+}
+.error {
+  color: #b00020;
+}
+#toast {
+  position: fixed;
+  top: 60px;
+  right: 24px;
+  background: #00703c;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 6px;
+}
+[hidden] {
+  display: none !important;
+}

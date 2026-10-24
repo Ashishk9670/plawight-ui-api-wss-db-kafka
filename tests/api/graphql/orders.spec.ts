@@ -1,9 +1,8 @@
 import { CREATE_ORDER, ORDER, ORDERS, UPDATE_ORDER_STATUS } from '@clients/graphql-operations';
 import { OrderSchema } from '@schemas';
+import type { Order } from '@schemas/graphql.generated';
 import { expect, test } from '@fixtures/base.fixture';
 import { validate } from '@utils/schema-validator';
-
-type Order = { id: number; status: string; total: number };
 
 test.describe('GraphQL orders', () => {
   test('createOrder mutation creates an order @smoke @graphql', async ({ userGraphql, makeProduct }) => {

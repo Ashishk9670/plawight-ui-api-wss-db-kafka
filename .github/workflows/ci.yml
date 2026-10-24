@@ -95,9 +95,21 @@ jobs:
         if: steps.gate.outputs.run == 'true' && (startsWith(matrix.project, 'ui-') || startsWith(matrix.project, 'mobile-') || matrix.project == 'e2e')
         run: npx playwright install --with-deps chromium firefox webkit
 
+      - name: Set up Docker Buildx
+        if: steps.gate.outputs.run == 'true'
+        uses: docker/setup-buildx-action@v3
+      - name: Build the AUT image (layers cached in the Actions cache)
+        if: steps.gate.outputs.run == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./aut
+          load: true
+          tags: shop-aut:local
+          cache-from: type=gha,scope=aut
+          cache-to: type=gha,scope=aut,mode=max
       - name: Start the AUT (Postgres, Kafka, app)
         if: steps.gate.outputs.run == 'true'
-        run: npm run aut:up
+        run: npm run aut:up:ci
 
       - name: Run tests
         if: steps.gate.outputs.run == 'true'

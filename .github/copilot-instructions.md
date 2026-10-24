@@ -4,6 +4,7 @@ This repo is a Playwright + TypeScript framework testing the AUT in `aut/`
 (UI + REST + GraphQL + WebSocket + Postgres + Kafka). Follow these conventions when you add or change tests.
 
 ## Layout (path aliases are defined in tsconfig.json)
+
 - `tests/<layer>/` where layer is `ui`, `api/rest`, `api/graphql`, `websocket`, `messaging`, `db`, `e2e`
 - `pages/` and `components/`: page and component objects. Locators live there, never in specs
 - `clients/`: protocol clients. `services/`: API wrappers built on the clients
@@ -11,6 +12,7 @@ This repo is a Playwright + TypeScript framework testing the AUT in `aut/`
 - `schemas/`: zod schemas for payloads. Validate with `validate()` from `@utils/schema-validator`
 
 ## Rules
+
 1. Locators: `getByTestId` first (the AUT exposes `data-testid`), then role/text. No CSS/XPath chains.
 2. No `waitForTimeout`. Use web-first assertions, `expect.poll`, `waitFor`, or the clients' `waitFor*` helpers.
 3. Tests are independent and parallel-safe: create data with `makeProduct`, never rely on stock or ids of seed data
@@ -22,6 +24,7 @@ This repo is a Playwright + TypeScript framework testing the AUT in `aut/`
 8. Run `npm run typecheck` and the relevant project (`npm run test:<layer>`) before saying a change is done.
 
 ## Using Playwright MCP
+
 The `playwright` MCP server (`.mcp.json`, `.vscode/mcp.json`) drives a real browser against the running AUT at
 http://localhost:3000 (`npm run aut:up`). Use it to explore the app and to find real `data-testid` values and
 behaviour before writing a test. Never invent locators. Prompts are in `ai/prompts/`.

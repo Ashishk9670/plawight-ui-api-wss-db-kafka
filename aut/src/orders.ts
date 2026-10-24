@@ -160,18 +160,55 @@ export async function createOrder(userId: number, items: OrderItemInput[]): Prom
   }
 
   const order = (await getOrder(orderId))!;
-  await publishOrderEvent('order.created', order);
+  try {
+    await publishOrderEvent('order.created', order);
+  } catch (e) {
+    // The order must not exist without its event: compensate, so the caller can safely retry.
+    console.error(`Publishing order.created for order ${order.id} failed, rolling the order back`, e);
+    await undoOrder(order);
+    throw new HttpError(503, 'Event bus unavailable, the order was not placed');
+  }
   notifyUser(userId, { type: 'order.status', orderId: order.id, status: order.status });
   return order;
+}
+
+/** Compensation for a committed order: puts the stock back and removes the order and its items. */
+async function undoOrder(order: Order): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const item of order.items) {
+      await client.query('UPDATE products SET stock = stock + $2 WHERE id = $1', [item.productId, item.quantity]);
+    }
+    await client.query('DELETE FROM orders WHERE id = $1', [order.id]);
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
 }
 
 export async function updateOrderStatus(id: number, status: string): Promise<Order> {
   if (!ORDER_STATUSES.includes(status as OrderStatus))
     throw new HttpError(400, `status must be one of ${ORDER_STATUSES.join(', ')}`);
-  const { rowCount } = await pool.query('UPDATE orders SET status = $2 WHERE id = $1', [id, status]);
-  if (!rowCount) throw new HttpError(404, 'Order not found');
+  const previous = await pool.query('SELECT status FROM orders WHERE id = $1', [id]);
+  if (!previous.rows[0]) throw new HttpError(404, 'Order not found');
+  await pool.query('UPDATE orders SET status = $2 WHERE id = $1', [id, status]);
   const order = (await getOrder(id))!;
-  await publishOrderEvent('order.updated', order);
+  try {
+    await publishOrderEvent('order.updated', order);
+  } catch (e) {
+    console.error(`Publishing order.updated for order ${id} failed, reverting the status`, e);
+    // Only revert if nobody changed the status in the meantime.
+    await pool.query('UPDATE orders SET status = $3 WHERE id = $1 AND status = $2', [
+      id,
+      status,
+      previous.rows[0].status,
+    ]);
+    throw new HttpError(503, 'Event bus unavailable, the status was not changed');
+  }
   notifyUser(order.userId, { type: 'order.status', orderId: order.id, status: order.status });
   return order;
 }

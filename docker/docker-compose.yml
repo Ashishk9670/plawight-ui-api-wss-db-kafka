@@ -43,6 +43,7 @@ services:
       retries: 20
 
   aut:
+    image: shop-aut:local # CI pre-builds this tag with a layer cache; locally compose builds it
     build:
       context: ../aut
     environment:
