@@ -45,7 +45,7 @@
     "@graphql-codegen/typescript": "^6.1.2",
     "@playwright/test": "^1.49.1",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^22.10.0",
+    "@types/node": "^26.6.5",
     "@types/pg": "^8.11.10",
     "@types/ws": "^8.5.13",
     "ajv": "^8.20.0",
