@@ -2,7 +2,7 @@ name: shop-aut
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: shop
       POSTGRES_PASSWORD: shop
