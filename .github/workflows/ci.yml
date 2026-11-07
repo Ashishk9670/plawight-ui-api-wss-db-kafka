@@ -28,7 +28,7 @@ env:
 jobs:
   static:
     name: typecheck + lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # pinned: ubuntu-latest moved to 26.04, which Playwright WebKit does not support yet
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -41,7 +41,7 @@ jobs:
   test:
     name: test (${{ matrix.project }} ${{ matrix.shard || '1/1' }})
     needs: static
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # pinned: ubuntu-latest moved to 26.04, which Playwright WebKit does not support yet
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -141,7 +141,7 @@ jobs:
     name: merged report
     needs: test
     if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # pinned: ubuntu-latest moved to 26.04, which Playwright WebKit does not support yet
     permissions:
       contents: read
       pull-requests: write # PR summary comment
@@ -196,7 +196,7 @@ jobs:
     needs: report
     # Opt-in: set the repository variable ENABLE_PAGES=true and Settings > Pages > Source = GitHub Actions.
     if: ${{ !cancelled() && vars.ENABLE_PAGES == 'true' && github.ref == 'refs/heads/main' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # pinned: ubuntu-latest moved to 26.04, which Playwright WebKit does not support yet
     permissions:
       pages: write
       id-token: write
