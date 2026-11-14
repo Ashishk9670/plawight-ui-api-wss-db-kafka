@@ -9,11 +9,16 @@ export interface KafkaEvent<T = any> {
 }
 
 /**
- * Starts a consumer (unique group, from latest) BEFORE the action under test, collects
- * everything, and lets the test wait for a specific event by predicate.
+ * Starts a consumer (unique group) BEFORE the action under test, collects everything published from that
+ * moment on, and lets the test wait for a specific event by predicate.
+ *
+ * "Start from latest" alone is resolved by the broker after the group join, so an event produced right after
+ * start() returns could be skipped on a cold broker. Instead the end offsets are read first and the consumer
+ * seeks to them; messages fetched twice around the seek are dropped by offset.
  */
 export class KafkaListener {
   readonly events: KafkaEvent[] = [];
+  private seen = new Set<string>();
   private consumer?: Consumer;
 
   constructor(
@@ -22,19 +27,39 @@ export class KafkaListener {
   ) {}
 
   async start() {
+    const endOffsets = await this.endOffsets();
     this.consumer = this.kafka.consumer({ groupId: `pw-${Date.now()}-${Math.random().toString(36).slice(2)}` });
     await this.consumer.connect();
     await this.consumer.subscribe({ topic: this.topic, fromBeginning: false });
     // Resolve only once partitions are assigned, so events produced right after start() are not missed.
     const joined = new Promise<void>((resolve) => this.consumer!.on(this.consumer!.events.GROUP_JOIN, () => resolve()));
     await this.consumer.run({
-      eachMessage: async ({ topic, message }) => {
+      eachMessage: async ({ topic, partition, message }) => {
+        const id = `${partition}:${message.offset}`;
+        if (this.seen.has(id)) return;
+        this.seen.add(id);
         const value = JSON.parse(message.value?.toString() ?? 'null');
         logger.debug(`Kafka <- ${topic} ${message.key?.toString()}`);
         this.events.push({ key: message.key?.toString() ?? null, value, topic });
       },
     });
     await joined;
+    for (const { partition, high } of endOffsets) {
+      this.consumer.seek({ topic: this.topic, partition, offset: high });
+    }
+  }
+
+  /** Current end offset of every partition; empty if the topic does not exist yet. */
+  private async endOffsets(): Promise<{ partition: number; high: string }[]> {
+    const admin = this.kafka.admin();
+    await admin.connect();
+    try {
+      return await admin.fetchTopicOffsets(this.topic);
+    } catch {
+      return [];
+    } finally {
+      await admin.disconnect();
+    }
   }
 
   async waitForEvent<T = any>(predicate: (e: KafkaEvent) => boolean, timeout = 15_000): Promise<KafkaEvent<T>> {
