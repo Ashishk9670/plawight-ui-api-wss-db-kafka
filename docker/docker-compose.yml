@@ -2,7 +2,7 @@ name: shop-aut
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: shop
       POSTGRES_PASSWORD: shop
@@ -18,7 +18,7 @@ services:
       retries: 20
 
   kafka:
-    image: apache/kafka:3.8.0
+    image: apache/kafka:4.3.1
     ports:
       - '9094:9094'
     environment:
