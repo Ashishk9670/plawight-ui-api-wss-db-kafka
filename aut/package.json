@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "express": "^4.21.2",
+    "express": "^5.3.0",
     "graphql": "^17.1.0",
     "graphql-http": "^1.22.3",
     "jsonwebtoken": "^9.0.2",
@@ -19,7 +19,7 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@types/express": "^4.17.21",
+    "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^26.6.6",
     "@types/pg": "^8.11.10",
