@@ -100,7 +100,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
       - name: Build the AUT image (layers cached in the Actions cache)
         if: steps.gate.outputs.run == 'true'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./aut
           load: true
